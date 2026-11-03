@@ -1,4 +1,4 @@
-# TÍTULO · Nombre del proyecto
+# TÍTULO · Bank Marketing
 
 > Una frase: qué hace el sistema, para quién y con qué resultado. (Se rellena al final.)
 
@@ -25,4 +25,4 @@
 <!-- mlflow ui / streamlit run app/streamlit_app.py -->
 
 ## Autoría
-<!-- Nombres y enlaces. -->
+Akira · Iker · Álvaro
