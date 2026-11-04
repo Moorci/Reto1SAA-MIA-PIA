@@ -1,4 +1,4 @@
-# TÍTULO · Bank Marketing
+# TÍTULO · Bank Market
 
 > Una frase: qué hace el sistema, para quién y con qué resultado. (Se rellena al final.)
 
