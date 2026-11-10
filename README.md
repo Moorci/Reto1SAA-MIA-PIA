@@ -125,18 +125,34 @@ El análisis completo, con los cinco gráficos comentados, está en `notebooks/0
 
 **Métrica principal: recall.** Un cliente que contrata y no detectamos es una venta perdida; un cliente al que llamamos y no contrata es una llamada gastada. Perder la venta nos cuesta más que una llamada, así que priorizamos encontrar a los que contratan. Vigilamos también la **precisión** (de los clientes que marcamos, cuántos contratan de verdad) y el **F1**, que equilibra las dos. Los modelos se comparan con validación cruzada de 5 pliegues sobre train, con los resultados sacados de MLflow.
 
-El notebook [02_modelos_alvaro.ipynb](./notebooks/02_modelos_alvaro.ipynb) compara la regresión logística, KNN y un SVM lineal con ese mismo preprocesado y validación. KNN y SVM se registran en MLflow; sus resultados se añadirán a esta tabla cuando se ejecute el notebook con los datos procesados.
+El notebook [02_modelos_alvaro.ipynb](./notebooks/02_modelos_alvaro.ipynb) compara la regresión logística, KNN y un SVM lineal con el mismo preprocesado. KNN y SVM se registran en MLflow; sus métricas de validación ya están incluidas en la tabla. El notebook [04_modelos_akira.ipynb](./notebooks/04_modelos_akira.ipynb) compara cuatro configuraciones de MLP, cada una con y sin SMOTE; sus medias de validación cruzada se muestran por separado.
 
-| Modelo | Recall (train) | Recall (val) | Precisión (train) | Precisión (val) | F1 (train) | F1 (val) | Tiempo (s) |
+| Modelo | Recall (train) | Recall (val) | Precisión (train) | Precisión (val) | F1 (train) | F1 (val) | Tiempo de entrenamiento (s) |
 |---|---|---|---|---|---|---|---|
 | Regresión logística (base) | 0,235 | 0,231 | 0,677 | 0,664 | 0,349 | 0,343 | 0,3 |
-| KNN | — | — | — | — | — | — | — |
-| SVM | — | — | — | — | — | — | — |
+| KNN | 0,964 | 0,298 | 0,999 | 0,481 | 0,981 | 0,368 | 0,270 |
+| SVM lineal | 0,624 | 0,622 | 0,352 | 0,352 | 0,450 | 0,450 | 1,276 |
 | Random Forest | — | — | — | — | — | — | — |
 | XGBoost | — | — | — | — | — | — | — |
-| MLP (base y 3 experimentos) | — | — | — | — | — | — | — |
 
-> **PENDIENTE:** completar la tabla con los modelos que faltan, la comparación con y sin SMOTE y el experimento opcional con algo no visto en clase. La fila de regresión logística ya viene de MLflow.
+Los resultados de KNN muestran una diferencia grande entre train y validación: aunque alcanza un recall de 0,964 en train, baja a 0,298 en validación, señal de sobreajuste. El SVM lineal es más estable (recall 0,624 frente a 0,622), aunque su precisión es menor (0,352).
+
+**MLP: validación cruzada de 5 pliegues.** La tabla recoge la media de las métricas de validación de cada ejecución; el tiempo es el promedio de ajuste.
+
+| Configuración | SMOTE | Recall | Precisión | F1 | Tiempo (s) |
+|---|---:|---:|---:|---:|---:|
+| MLP regularizado | Sí | 0,444 | 0,347 | **0,388** | 10,7 |
+| MLP tanh | No | 0,269 | 0,632 | 0,377 | 2,2 |
+| MLP base | Sí | 0,405 | 0,337 | 0,367 | 15,5 |
+| MLP regularizado | No | 0,248 | 0,656 | 0,359 | 1,6 |
+| MLP tanh | Sí | 0,397 | 0,319 | 0,353 | 17,8 |
+| MLP profundo | Sí | 0,347 | 0,340 | 0,342 | 18,3 |
+| MLP base | No | 0,244 | 0,653 | 0,354 | 2,0 |
+| MLP profundo | No | 0,225 | 0,672 | 0,336 | 3,3 |
+
+En las cuatro configuraciones MLP, SMOTE aumenta el recall y reduce la precisión; también incrementa el tiempo de ajuste. La mejor F1 de esta comparación es 0,388, del MLP regularizado con SMOTE. Es un resultado de validación, no una evaluación final con el conjunto de test.
+
+> **Pendiente:** resultados de Random Forest y XGBoost. La fila de regresión logística ya viene de MLflow.
 
 **Primer resultado.** La regresión logística base tiene un recall bajo (0,23) y una precisión alta (0,66), con valores casi iguales en train y validación. No sobreajusta: se queda corta. Con solo un 11 % de compradores, prefiere decir "no" casi siempre y detecta pocos de los que sí contratan.
 
