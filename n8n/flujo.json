@@ -34,19 +34,31 @@
             {
               "id": "f3",
               "name": "p",
-              "value": "={{ Number($json.body.p) }}",
+              "value": "={{ (typeof $json.body.p === 'number' && $json.body.p >= 0 && $json.body.p <= 1) ? $json.body.p : null }}",
               "type": "number"
+            },
+            {
+              "id": "f3b",
+              "name": "p_texto",
+              "value": "={{ (typeof $json.body.p === 'number' && $json.body.p >= 0 && $json.body.p <= 1) ? ($json.body.p * 100).toFixed(1) + ' %' : 'sin p (no válida)' }}",
+              "type": "string"
             },
             {
               "id": "f4",
               "name": "decision",
-              "value": "={{ ($json.body.decision ?? '').toString().toUpperCase() }}",
+              "value": "={{ (typeof $json.body.p === 'number' && $json.body.p >= 0 && $json.body.p <= 1) ? ($json.body.decision ?? '').toString().toUpperCase() : 'REVISION_MANUAL' }}",
               "type": "string"
             },
             {
               "id": "f5",
               "name": "regla",
               "value": "={{ $json.body.regla ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f5b",
+              "name": "nombre_regla",
+              "value": "={{ $json.body.nombre_regla ?? '' }}",
               "type": "string"
             },
             {
@@ -69,7 +81,7 @@
             }
           ]
         },
-        "options": {}
+        "options": { "ignoreConversionErrors": true }
       },
       "id": "a1f0c001-0000-4000-8000-000000000002",
       "name": "Normalizar datos",
@@ -177,8 +189,8 @@
         "start": "={{ $now.plus({ hours: 1 }).toISO() }}",
         "end": "={{ $now.plus({ hours: 1, minutes: 15 }).toISO() }}",
         "additionalFields": {
-          "summary": "=📞 Llamar YA · cliente {{ $json.cliente_id }} (p = {{ ($json.p * 100).toFixed(1) }} %)",
-          "description": "=Decisión: {{ $json.decision }}\nRegla: {{ $json.regla }}\nMotivo: {{ $json.motivo }}\nProbabilidad de contratar: {{ ($json.p * 100).toFixed(1) }} %\nGenerado por el sistema de predicción el {{ $json.fecha }}"
+          "summary": "=📞 Llamar YA · cliente {{ $json.cliente_id }} (p = {{ $json.p_texto }})",
+          "description": "=Decisión: {{ $json.decision }}\nRegla: {{ $json.regla }} · {{ $json.nombre_regla }} (prioridad {{ $json.prioridad }})\nPor qué: {{ $json.motivo }}\nProbabilidad de contratar: {{ $json.p_texto }}\nGenerado por el sistema de predicción el {{ $json.fecha }}"
         }
       },
       "id": "a1f0c001-0000-4000-8000-000000000004",
@@ -242,9 +254,9 @@
     {
       "parameters": {
         "sendTo": "PON_AQUI_EL_CORREO_DEL_SUPERVISOR@gmail.com",
-        "subject": "=⚠️ Revisión manual · cliente {{ $json.cliente_id }}",
+        "subject": "=⚠️ Revisión manual · cliente {{ $json.cliente_id }} · {{ $json.regla || 'p no válida' }}",
         "emailType": "text",
-        "message": "=El sistema NO ha tomado una decisión automática para este cliente (regla de seguridad).\n\nCliente: {{ $json.cliente_id }}\nProbabilidad p: {{ $json.p }}\nRegla: {{ $json.regla }}\nMotivo: {{ $json.motivo }}\nFecha: {{ $json.fecha }}\n\nRevisa el caso y decide a mano si se le llama.",
+        "message": "=El sistema NO ha tomado una decisión automática para este cliente (regla de seguridad).\n\nCliente: {{ $json.cliente_id }}\nProbabilidad p: {{ $json.p_texto }}\nRegla: {{ $json.regla }} · {{ $json.nombre_regla }}\nPor qué: {{ $json.motivo || 'n8n ha recibido una p no válida y ha forzado la revisión manual.' }}\nFecha: {{ $json.fecha }}\n\nRevisa el caso y decide a mano si se le llama.",
         "options": {}
       },
       "id": "a1f0c001-0000-4000-8000-000000000008",
@@ -256,7 +268,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { ok: true, cliente_id: $('Normalizar datos').item.json.cliente_id, decision: $('Normalizar datos').item.json.decision, accion: ({ LLAMAR_AHORA: 'Llamada agendada en Google Calendar dentro de 1 hora', LLAMAR_ESTA_SEMANA: 'Cliente añadido a la cola de llamadas de la semana (Google Sheets)', ENVIAR_EMAIL: 'Correo informativo enviado al cliente (Gmail)', NO_LLAMAR: 'Cliente añadido a la lista de no llamar (Google Sheets)', REVISION_MANUAL: 'Aviso enviado al supervisor para revisión manual (Gmail)' })[$('Normalizar datos').item.json.decision] } }}",
+        "responseBody": "={{ { ok: true, cliente_id: $('Normalizar datos').item.json.cliente_id, decision: $('Normalizar datos').item.json.decision, regla: $('Normalizar datos').item.json.regla, nombre_regla: $('Normalizar datos').item.json.nombre_regla, accion: ({ LLAMAR_AHORA: 'Llamada agendada en Google Calendar dentro de 1 hora', LLAMAR_ESTA_SEMANA: 'Cliente añadido a la cola de llamadas de la semana (Google Sheets)', ENVIAR_EMAIL: 'Correo informativo enviado al cliente (Gmail)', NO_LLAMAR: 'Cliente añadido a la lista de no llamar (Google Sheets)', REVISION_MANUAL: 'Aviso enviado al supervisor para revisión manual (Gmail)' })[$('Normalizar datos').item.json.decision] } }}",
         "options": { "responseCode": 200 }
       },
       "id": "a1f0c001-0000-4000-8000-000000000009",
@@ -279,8 +291,8 @@
     },
     {
       "parameters": {
-        "content": "## Reto 1 · De la predicción a la acción\nStreamlit → modelo (p) → `src/reglas.py` (decisión) → **este webhook** → acción\n\n| Decisión | Acción |\n|---|---|\n| LLAMAR_AHORA | Evento en Google Calendar dentro de 1 h |\n| LLAMAR_ESTA_SEMANA | Fila en Sheets `cola_llamadas` |\n| ENVIAR_EMAIL | Correo al cliente (Gmail) |\n| NO_LLAMAR | Fila en Sheets `no_llamar` |\n| REVISION_MANUAL | Correo al supervisor (regla de seguridad) |\n| otra | Respuesta 400 |",
-        "height": 320,
+        "content": "## Reto 1 · De la predicción a la acción\nStreamlit → modelo (p) → `src/reglas.py` (decisión) → **este webhook** → acción\n\n| Decisión | Reglas | Acción |\n|---|---|---|\n| LLAMAR_AHORA | R4, R5 | Evento en Google Calendar dentro de 1 h |\n| LLAMAR_ESTA_SEMANA | R6, R7 | Fila en Sheets `cola_llamadas` |\n| ENVIAR_EMAIL | R8 | Correo al cliente (Gmail) |\n| NO_LLAMAR | R3, R9 | Fila en Sheets `no_llamar` |\n| REVISION_MANUAL | R1, R2 | Correo al supervisor (seguridad) |\n| otra | — | Respuesta 400 |\n\nDoble seguridad: si p no es válida, n8n fuerza REVISION_MANUAL.",
+        "height": 360,
         "width": 520
       },
       "id": "a1f0c001-0000-4000-8000-000000000011",

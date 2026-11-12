@@ -170,13 +170,31 @@ En las cuatro configuraciones MLP, SMOTE aumenta el recall y reduce la precisió
 
 ## Reglas de negocio y acción
 
-> **PENDIENTE.** Las reglas viven en `src/reglas.py`: **6 o más**, cada una con prioridad, decisión y por qué, y **una regla de seguridad**. El flujo de n8n recibe la decisión por webhook y hace una acción distinta para cada una. Tabla a rellenar:
->
-> | Prioridad | Regla | Decisión | Por qué |
-> |---|---|---|---|
-> | 1 | *(regla de seguridad)* | | |
-> | 2 | | | |
-> | … | | | |
+Las reglas están en `src/reglas.py`. Se revisan en orden de prioridad y **la primera que se cumple decide**. R1 y R2 son **reglas de seguridad**: si no podemos fiarnos de `p` o de los datos, decide una persona. R9 es la regla por defecto, para que ningún cliente se quede sin decisión.
+
+| Prioridad | Regla | Decisión | Por qué |
+|---|---|---|---|
+| 1 | **Seguridad:** `p` vacía o fuera de 0-1 | `REVISION_MANUAL` | Sin una probabilidad fiable no se decide automáticamente |
+| 2 | **Seguridad:** faltan datos o hay valores imposibles (edad fuera de 18-100…) | `REVISION_MANUAL` | Con datos erróneos la predicción no es fiable |
+| 3 | `campaign` ≥ 10 | `NO_LLAMAR` | Cliente saturado: insistir desgasta la relación, aunque `p` sea alta |
+| 4 | `p` ≥ 0,50 | `LLAMAR_AHORA` | Es más probable que contrate que no: las llamadas más rentables |
+| 5 | Éxito en la campaña anterior y `p` ≥ 0,25 | `LLAMAR_AHORA` | Esos clientes contratan ≈65 % de las veces (EDA) |
+| 6 | `p` ≥ 0,25 | `LLAMAR_ESTA_SEMANA` | Más del doble de la tasa base: merece llamada, tras los prioritarios |
+| 7 | Estudiante o jubilado y `p` ≥ 0,113 | `LLAMAR_ESTA_SEMANA` | Contratan 2-3 veces más que la media (EDA) |
+| 8 | `p` ≥ 0,113 | `ENVIAR_EMAIL` | Mejor que llamar al azar, pero no compensa una llamada; el correo es casi gratis |
+| 9 | Resto (`p` < 0,113) | `NO_LLAMAR` | Peor que llamar sin criterio: ese tiempo va a clientes con más opciones |
+
+**Acción en n8n** (`n8n/flujo.json`): el webhook recibe la decisión y hace una acción distinta en cada rama.
+
+| Decisión | Acción |
+|---|---|
+| `LLAMAR_AHORA` | Evento en Google Calendar para llamar dentro de 1 hora |
+| `LLAMAR_ESTA_SEMANA` | Fila en la hoja `cola_llamadas` de Google Sheets |
+| `ENVIAR_EMAIL` | Correo informativo al cliente con Gmail |
+| `NO_LLAMAR` | Fila en la hoja `no_llamar` de Google Sheets |
+| `REVISION_MANUAL` | Correo al supervisor con Gmail |
+
+> Los umbrales (0,50 / 0,25 / 0,113) hay que revisarlos con las probabilidades del modelo elegido en validación.
 
 ## Limitaciones y próximos pasos
 

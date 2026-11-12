@@ -9,11 +9,13 @@ El flujo de n8n (n8n/flujo.json) recibe un POST con este JSON:
         "regla": "R2",                    # regla de src/reglas.py que se ha aplicado
         "motivo": "p >= 0.5 ...",         # el porqué de la regla
         "prioridad": 2,                   # prioridad de la regla
+        "nombre_regla": "Probabilidad alta",
         "email_cliente": "x@correo.com"   # opcional, solo para ENVIAR_EMAIL
     }
 
 y hace una acción distinta según "decision".
 """
+import math
 import os
 
 import requests
@@ -39,6 +41,7 @@ def enviar_decision(
     regla: str = "",
     motivo: str = "",
     prioridad: int = 0,
+    nombre_regla: str = "",
     email_cliente: str = "",
     url: str | None = None,
     timeout: float = 10,
@@ -52,6 +55,7 @@ def enviar_decision(
         regla: código de la regla aplicada (p. ej. "R1").
         motivo: explicación de por qué se ha tomado la decisión.
         prioridad: prioridad de la regla aplicada.
+        nombre_regla: nombre legible de la regla (p. ej. "Probabilidad alta").
         email_cliente: correo del cliente (solo se usa en ENVIAR_EMAIL).
         url: URL del webhook. Si no se indica, se usa la variable de entorno
             N8N_WEBHOOK_URL o, en su defecto, URL_POR_DEFECTO.
@@ -66,13 +70,21 @@ def enviar_decision(
         return {"ok": False, "error": f"Decisión no válida: {decision}"}
 
     url = url or os.getenv("N8N_WEBHOOK_URL", URL_POR_DEFECTO)
+    # Si p no es un número válido (regla de seguridad), se envía como null
+    try:
+        p_envio = round(float(p), 4)
+        if math.isnan(p_envio):
+            p_envio = None
+    except (TypeError, ValueError):
+        p_envio = None
     datos = {
         "cliente_id": str(cliente_id),
-        "p": round(float(p), 4),
+        "p": p_envio,
         "decision": decision,
         "regla": regla,
         "motivo": motivo,
         "prioridad": int(prioridad),
+        "nombre_regla": nombre_regla,
         "email_cliente": email_cliente,
     }
     try:
