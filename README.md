@@ -1,6 +1,6 @@
 # Predictor de depósitos a plazo · Bank Marketing
 
-Sistema que indica al equipo de telemarketing de un banco **a qué clientes llamar primero** para ofrecerles un depósito a plazo, y activa la acción correspondiente. **[PENDIENTE: resultado, p. ej. "De cada 100 clientes que contratan, el modelo detecta X"]**
+Sistema que indica al equipo de telemarketing de un banco **a qué clientes llamar primero** para ofrecerles un depósito a plazo, y activa la acción correspondiente. **De cada 100 clientes que contratan, el modelo detecta 64, y de cada 100 llamadas que recomienda, 42 acaban en venta (frente a 11 llamando sin criterio).**
 
 ![Aplicación en Streamlit](resultados/app_streamlit.png)
 
@@ -125,17 +125,29 @@ El análisis completo, con los cinco gráficos comentados, está en `notebooks/0
 
 **Métrica principal: recall.** Un cliente que contrata y no detectamos es una venta perdida; un cliente al que llamamos y no contrata es una llamada gastada. Perder la venta nos cuesta más que una llamada, así que priorizamos encontrar a los que contratan. Vigilamos también la **precisión** (de los clientes que marcamos, cuántos contratan de verdad) y el **F1**, que equilibra las dos. Los modelos se comparan con validación cruzada de 5 pliegues sobre train, con los resultados sacados de MLflow.
 
-El notebook [02_modelos_alvaro.ipynb](./notebooks/02_modelos_alvaro.ipynb) compara la regresión logística, KNN y un SVM lineal con el mismo preprocesado. KNN y SVM se registran en MLflow; sus métricas de validación ya están incluidas en la tabla. El notebook [04_modelos_akira.ipynb](./notebooks/04_modelos_akira.ipynb) compara cuatro configuraciones de MLP, cada una con y sin SMOTE; sus medias de validación cruzada se muestran por separado.
+El notebook [02_modelos_alvaro.ipynb](./notebooks/02_modelos_alvaro.ipynb) compara la regresión logística, KNN y un SVM lineal con el mismo preprocesado. KNN y SVM se registran en MLflow; sus métricas de validación ya están incluidas en la tabla. El notebook [04_modelos_akira.ipynb](./notebooks/04_modelos_akira.ipynb) compara cuatro configuraciones de MLP, cada una con y sin SMOTE; sus medias de validación cruzada se muestran por separado. El notebook [03_modelos_iker.ipynb](./notebooks/03_modelos_iker.ipynb) ajusta Random Forest y XGBoost con `GridSearchCV` (4 configuraciones por modelo, elegidas por F1 de validación), con y sin SMOTE dentro del pipeline; en la tabla aparece la mejor configuración de cada búsqueda y las 16 ejecuciones quedan registradas en MLflow.
 
 | Modelo | Recall (train) | Recall (val) | Precisión (train) | Precisión (val) | F1 (train) | F1 (val) | Tiempo de entrenamiento (s) |
 |---|---|---|---|---|---|---|---|
 | Regresión logística (base) | 0,235 | 0,231 | 0,677 | 0,664 | 0,349 | 0,343 | 0,3 |
 | KNN | 0,964 | 0,298 | 0,999 | 0,481 | 0,981 | 0,368 | 0,270 |
 | SVM lineal | 0,624 | 0,622 | 0,352 | 0,352 | 0,450 | 0,450 | 1,276 |
-| Random Forest | — | — | — | — | — | — | — |
-| XGBoost | — | — | — | — | — | — | — |
+| Random Forest (`class_weight="balanced"`, sin SMOTE) | 0,713 | 0,610 | 0,451 | 0,401 | 0,553 | 0,483 | 4,39 |
+| Random Forest (`class_weight="balanced"`, con SMOTE) | 0,587 | 0,507 | 0,565 | 0,474 | 0,576 | **0,490** | 12,63 |
+| XGBoost (sin SMOTE) | 0,299 | 0,259 | 0,741 | 0,652 | 0,426 | 0,371 | 1,90 |
+| XGBoost (con SMOTE) | 0,480 | 0,469 | 0,485 | 0,474 | 0,483 | 0,471 | 4,94 |
 
 Los resultados de KNN muestran una diferencia grande entre train y validación: aunque alcanza un recall de 0,964 en train, baja a 0,298 en validación, señal de sobreajuste. El SVM lineal es más estable (recall 0,624 frente a 0,622), aunque su precisión es menor (0,352).
+
+Mejores hiperparámetros encontrados en `03_modelos_iker.ipynb`:
+
+| Modelo | Hiperparámetros |
+|---|---|
+| Random Forest (con y sin SMOTE) | `n_estimators=250`, `max_depth=16`, `min_samples_split=2`, `min_samples_leaf=5`, `max_features="sqrt"`, `class_weight="balanced"` |
+| XGBoost sin SMOTE | `n_estimators=300`, `max_depth=5`, `learning_rate=0.03`, `subsample=0.9`, `colsample_bytree=0.8`, `min_child_weight=3`, `reg_lambda=5.0` |
+| XGBoost con SMOTE | `n_estimators=300`, `max_depth=3`, `learning_rate=0.03`, `subsample=0.8`, `colsample_bytree=0.8`, `min_child_weight=1`, `reg_lambda=5.0` |
+
+**Random Forest y XGBoost.** Random Forest sin SMOTE tiene el segundo mejor recall de validación (0,610), casi igual que el SVM lineal (0,622) pero con más precisión (0,401 frente a 0,352). Con SMOTE consigue el mejor F1 de todo el proyecto (0,490): gana precisión (+0,073) a cambio de recall (−0,102), y su brecha de F1 entre train y validación (0,086) es la mayor de los cuatro, un indicio leve de sobreajuste. XGBoost sin SMOTE es muy conservador: la mejor precisión (0,652) pero solo detecta a uno de cada cuatro clientes que contratan (recall 0,259). SMOTE le sienta bien: el recall sube 0,209 y el F1 pasa de 0,371 a 0,471, aunque sigue por debajo de Random Forest.
 
 **MLP: validación cruzada de 5 pliegues.** La tabla recoge la media de las métricas de validación de cada ejecución; el tiempo es el promedio de ajuste.
 
@@ -152,21 +164,55 @@ Los resultados de KNN muestran una diferencia grande entre train y validación: 
 
 En las cuatro configuraciones MLP, SMOTE aumenta el recall y reduce la precisión; también incrementa el tiempo de ajuste. La mejor F1 de esta comparación es 0,388, del MLP regularizado con SMOTE. Es un resultado de validación, no una evaluación final con el conjunto de test.
 
-> **Pendiente:** resultados de Random Forest y XGBoost. La fila de regresión logística ya viene de MLflow.
-
 **Primer resultado.** La regresión logística base tiene un recall bajo (0,23) y una precisión alta (0,66), con valores casi iguales en train y validación. No sobreajusta: se queda corta. Con solo un 11 % de compradores, prefiere decir "no" casi siempre y detecta pocos de los que sí contratan.
 
-**Modelo elegido:** **PENDIENTE.** Explicar por qué (qué métrica priorizamos según el negocio y, si hay empate, el modelo más simple) y qué variables pesan más según **SHAP**, calculado con validación y no con test.
+**Modelo elegido: Random Forest con `class_weight="balanced"` y sin SMOTE.** Lo elegimos por la métrica que prioriza el negocio, el recall, sin descuidar la precisión:
 
-**Resultado con test** (clientes que el modelo no había visto, evaluado una sola vez en la app de Streamlit): **PENDIENTE.** Recall, precisión, F1 y matriz de confusión, y qué significan sus errores para el banco (falsos negativos = ventas perdidas, falsos positivos = llamadas gastadas).
+- **Recall de validación de 0,610**, prácticamente igual que el más alto (SVM lineal, 0,622): detecta a 6 de cada 10 clientes que contratan.
+- **Más precisión que el SVM** (0,401 frente a 0,352): con un recall casi igual, gasta muchas menos llamadas en clientes que no contratan.
+- **F1 de 0,483**, casi empatado con el mejor del proyecto (Random Forest con SMOTE, 0,490). Ese otro modelo pierde 0,10 de recall, que es justo lo que más nos importa, y sobreajusta algo más.
+- **Más simple que la versión con SMOTE:** el desbalanceo se compensa con pesos de clase, sin generar clientes sintéticos, y se entrena en un tercio del tiempo (4,4 s frente a 12,6 s).
+
+El modelo se entrena con todo train y se guarda en `models/mejor_modelo.joblib` con `python -m src.entrenar_modelo`, que también lo registra en MLflow (`modelo_elegido_random_forest`).
+
+**Qué variables pesan más según SHAP** ([05_shap.ipynb](./notebooks/05_shap.ipynb)). SHAP se calcula con validación, no con test: separamos un 20 % de train, entrenamos el mismo pipeline con el 80 % restante y explicamos 500 clientes de validación.
+
+![Importancia SHAP](resultados/shap_importancia.png)
+
+- **El momento económico es lo que más pesa.** Las tres primeras variables son el número de empleados del país, la variación del empleo y el euríbor, y las cinco variables económicas suman casi la mitad (≈47 %) de la importancia. Con poco empleo y el euríbor bajo (la crisis de 2009-2010) la probabilidad sube; con la economía en alza, baja.
+- **Después, cómo y cuándo se llama:** al móvil sube la probabilidad y al fijo la baja; llamar en mayo la baja.
+- **El historial con el banco es la señal más fuerte de cada cliente:** haber sido contactado en la campaña anterior, y sobre todo haber contratado entonces (`poutcome = success`), sube la probabilidad entre 5 y 11 puntos.
+- **Los datos personales pesan poco:** edad, trabajo, estudios o préstamos mueven la probabilidad un punto o menos de media.
+
+Tiene sentido y coincide con el EDA, pero confirma una limitación: el modelo aprende más *cuándo* llamar que *a quién* (ver "Limitaciones"). Además, por `class_weight="balanced"` el modelo parte de una probabilidad de 0,50 y no del 11 % real: sus probabilidades sirven para ordenar clientes, y los umbrales de las reglas hay que fijarlos con ellas.
+
+**Resultado con test** (8.236 clientes que el modelo no había visto, 928 de ellos contrataron; evaluado una sola vez en la app de Streamlit, con umbral 0,5):
+
+| Recall | Precisión | F1 |
+|---:|---:|---:|
+| **0,641** | 0,419 | 0,507 |
+
+Los tres valores son algo mejores que en validación (0,610 / 0,401 / 0,483), así que el modelo generaliza bien y no está sobreajustado.
 
 ![Matriz de confusión](resultados/matriz_confusion.png)
+
+| | El modelo dice "no contrata" | El modelo dice "contrata" |
+|---|---:|---:|
+| **No contrata** | 6.483 (llamadas que nos ahorramos) | 825 (**falsos positivos**: llamadas gastadas) |
+| **Contrata** | 333 (**falsos negativos**: ventas perdidas) | 595 (ventas detectadas) |
+
+Qué significa para el banco:
+
+- **Detectamos 64 de cada 100 clientes que contratan.** Los otros 36 (los 333 falsos negativos) son ventas perdidas: es el error que más nos cuesta y por eso priorizamos el recall.
+- **Llamando solo a los 1.420 clientes que marca el modelo (el 17 % del total) conseguimos 595 de las 928 contrataciones (el 64 %).** Es decir, con 5 de cada 6 llamadas menos obtenemos casi dos tercios de las ventas.
+- **De cada 100 llamadas, 42 acaban en venta**, frente a 11 llamando sin criterio: cada llamada rinde casi cuatro veces más.
+- A cambio, 825 llamadas (falsos positivos) se hacen a clientes que no contratan. Es el coste aceptado: una llamada gastada cuesta menos que una venta perdida.
 
 **Experimentos en MLflow:**
 
 ![MLflow](resultados/mlflow.png)
 
-> **PENDIENTE:** capturas de `resultados/matriz_confusion.png` y `resultados/mlflow.png`.
+> **PENDIENTE:** captura de `resultados/mlflow.png`.
 
 ## Reglas de negocio y acción
 
@@ -217,9 +263,11 @@ prediccion-deposito-banco/
 │   ├── 01_eda.ipynb              EDA, nulos y separación train/test
 │   ├── 02_modelos_alvaro.ipynb
 │   ├── 03_modelos_iker.ipynb
-│   └── 04_modelos_akira.ipynb
+│   ├── 04_modelos_akira.ipynb
+│   └── 05_shap.ipynb             SHAP del modelo elegido (validación)
 ├── src/
 │   ├── utils.py             funciones del proyecto (pipeline, métricas, MLflow)
+│   ├── entrenar_modelo.py   entrena y guarda el modelo elegido
 │   ├── reglas.py            reglas de negocio
 │   └── n8n.py               envío de la decisión al webhook
 ├── app/
@@ -245,7 +293,10 @@ pip install -r requirements.txt
 # 4. Ver los experimentos
 mlflow ui --backend-store-uri sqlite:///mlflow.db
 
-# 5. Abrir la aplicación
+# 5. Entrenar y guardar el modelo elegido (models/mejor_modelo.joblib)
+python -m src.entrenar_modelo
+
+# 6. Abrir la aplicación
 streamlit run app/streamlit_app.py
 ```
 
