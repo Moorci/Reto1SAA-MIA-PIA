@@ -6,3 +6,4 @@ venv/
 mlruns/
 .DS_Store
 mlflow.db
+.vscode/
