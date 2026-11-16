@@ -15,6 +15,7 @@ El flujo de n8n (n8n/flujo.json) recibe un POST con este JSON:
 
 y hace una acción distinta según "decision".
 """
+import json
 import math
 import os
 
@@ -31,7 +32,7 @@ DECISIONES_VALIDAS = [
 
 # URL del webhook. En pruebas desde el editor de n8n se usa /webhook-test/...;
 # con el flujo activado, /webhook/...
-URL_POR_DEFECTO = "http://localhost:5678/webhook/deposito-decision"
+URL_POR_DEFECTO = "http://localhost:5678/webhook-test/deposito-decision"
 
 
 def enviar_decision(
@@ -95,3 +96,17 @@ def enviar_decision(
             return {"ok": respuesta.ok, "status": respuesta.status_code, "texto": respuesta.text}
     except requests.RequestException as e:
         return {"ok": False, "error": f"No se pudo contactar con n8n: {e}"}
+
+
+if __name__ == "__main__":
+    resultado = enviar_decision(
+        cliente_id="C-00123",
+        p=0.72,
+        decision="LLAMAR_AHORA",
+        regla="R2",
+        motivo="p >= 0.5 y la regla de seguridad no bloquea la llamada",
+        prioridad=2,
+        nombre_regla="Probabilidad alta",
+        email_cliente="cliente.ejemplo@correo.com",
+    )
+    print(json.dumps(resultado, ensure_ascii=False, indent=2))
