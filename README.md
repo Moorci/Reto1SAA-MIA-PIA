@@ -221,11 +221,9 @@ Qué significa para el banco:
 - **De cada 100 llamadas, 42 acaban en venta**, frente a 11 llamando sin criterio: cada llamada rinde casi cuatro veces más.
 - A cambio, 825 llamadas (falsos positivos) se hacen a clientes que no contratan. Es el coste aceptado: una llamada gastada cuesta menos que una venta perdida.
 
-**Experimentos en MLflow:**
+**Experimentos en MLflow.** El experimento común `reto1-deposito-banco` reúne 41 ejecuciones: 3 de regresión logística/KNN/SVM, 16 de Random Forest y XGBoost, 8 de MLP, 12 de Naive Bayes, 1 de SHAP y 1 del modelo final entrenado. Cada run guarda sus parámetros y métricas; las ejecuciones principales permiten comparar las configuraciones ganadoras.
 
-![MLflow](resultados/mlflow.png)
-
-> **PENDIENTE:** captura de `resultados/mlflow.png`.
+La base `mlflow.db` es local y no se incluye en Git. Para reconstruirla en otro equipo hay que ejecutar los notebooks (no basta con abrir sus resultados guardados) y entrenar el modelo final antes de iniciar la interfaz. Comprueba también que el selector de experimento de MLflow muestra `reto1-deposito-banco` y que no hay filtros activos en Runs.
 
 ## Reglas de negocio y acción
 
@@ -302,13 +300,14 @@ pip install -r requirements.txt
 # 2. Descargar bank-additional-full.csv del UCI y dejarlo en data/raw/
 #    http://archive.ics.uci.edu/ml/datasets/Bank+Marketing
 
-# 3. Ejecutar los notebooks en orden (01 primero: genera data/processed/)
+# 3. Ejecutar los notebooks 01-06 en orden (01 genera data/processed/;
+#    02-06 registran las ejecuciones en mlflow.db)
 
-# 4. Ver los experimentos
-mlflow ui --backend-store-uri sqlite:///mlflow.db
-
-# 5. Entrenar y guardar el modelo elegido (models/mejor_modelo.joblib)
+# 4. Entrenar y registrar el modelo final
 python -m src.entrenar_modelo
+
+# 5. Ver todos los experimentos desde la raíz del proyecto
+mlflow ui --backend-store-uri sqlite:///mlflow.db
 
 # 6. Abrir la aplicación
 streamlit run app/streamlit_app.py

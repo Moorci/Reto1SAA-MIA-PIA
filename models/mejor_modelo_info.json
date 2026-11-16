@@ -16,6 +16,6 @@
     "precision_val": 0.4005245112446555,
     "f1_train": 0.5526917577588719,
     "f1_val": 0.48346607690707694,
-    "tiempo_entrenamiento_s": 2.043209362030029
+    "tiempo_entrenamiento_s": 8.996480560302734
   }
 }
