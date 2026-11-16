@@ -136,6 +136,8 @@ El notebook [02_modelos_alvaro.ipynb](./notebooks/02_modelos_alvaro.ipynb) compa
 | Random Forest (`class_weight="balanced"`, con SMOTE) | 0,587 | 0,507 | 0,565 | 0,474 | 0,576 | **0,490** | 12,63 |
 | XGBoost (sin SMOTE) | 0,299 | 0,259 | 0,741 | 0,652 | 0,426 | 0,371 | 1,90 |
 | XGBoost (con SMOTE) | 0,480 | 0,469 | 0,485 | 0,474 | 0,483 | 0,471 | 4,94 |
+| Naive Bayes (sin SMOTE) · *modelo extra* | 0,448 | 0,448 | 0,405 | 0,405 | 0,426 | 0,425 | 0,35 |
+| Naive Bayes (con SMOTE) · *modelo extra* | 0,535 | 0,534 | 0,349 | 0,348 | 0,422 | 0,421 | 0,55 |
 
 Los resultados de KNN muestran una diferencia grande entre train y validación: aunque alcanza un recall de 0,964 en train, baja a 0,298 en validación, señal de sobreajuste. El SVM lineal es más estable (recall 0,624 frente a 0,622), aunque su precisión es menor (0,352).
 
@@ -163,6 +165,17 @@ Mejores hiperparámetros encontrados en `03_modelos_iker.ipynb`:
 | MLP profundo | No | 0,225 | 0,672 | 0,336 | 3,3 |
 
 En las cuatro configuraciones MLP, SMOTE aumenta el recall y reduce la precisión; también incrementa el tiempo de ajuste. La mejor F1 de esta comparación es 0,388, del MLP regularizado con SMOTE. Es un resultado de validación, no una evaluación final con el conjunto de test.
+
+**Modelo extra, no visto en clase: Naive Bayes gaussiano** ([06_modelo_extra_naive_bayes.ipynb](./notebooks/06_modelo_extra_naive_bayes.ipynb)). Es una familia distinta a todas las anteriores: un clasificador probabilístico que aprende cómo son los clientes de cada clase (media y varianza de cada variable) y aplica el teorema de Bayes suponiendo que las variables son independientes entre sí. Probamos 6 valores de su único hiperparámetro (`var_smoothing`), con y sin SMOTE: 12 ejecuciones en MLflow, con la misma validación cruzada de 5 pliegues. En la tabla general aparece la mejor configuración por F1 de cada condición (`var_smoothing=0.001`).
+
+| Configuración | SMOTE | Recall (val) | Precisión (val) | F1 (val) | Tiempo (s) |
+|---|---:|---:|---:|---:|---:|
+| Naive Bayes, mejor F1 (`var_smoothing=0.001`) | No | 0,448 | 0,405 | **0,425** | 0,35 |
+| Naive Bayes, mejor F1 (`var_smoothing=0.001`) | Sí | 0,534 | 0,348 | 0,421 | 0,55 |
+| Naive Bayes, máximo recall (`var_smoothing=0.1`) | Sí | **0,629** | 0,309 | 0,414 | 0,44 |
+| Random Forest elegido (referencia) | No | 0,610 | 0,401 | 0,483 | 2,04 |
+
+**No mejora lo que teníamos.** Su mejor F1 (0,425) queda por debajo del de Random Forest (0,483). La configuración de máximo recall iguala a Random Forest en clientes detectados (0,629 frente a 0,610), pero con mucha menos precisión (0,309 frente a 0,401): para encontrar prácticamente a los mismos clientes habría que hacer alrededor de un tercio más de llamadas. No sobreajusta (train y validación coinciden) y es el modelo más rápido del proyecto, pero se queda corto: las variables económicas están correlacionadas entre 0,91 y 0,97, así que Naive Bayes cuenta la misma evidencia varias veces, y no puede aprender combinaciones de variables como hacen los árboles. Por eso mantenemos Random Forest y no cambiamos el modelo guardado ni la app.
 
 **Primer resultado.** La regresión logística base tiene un recall bajo (0,23) y una precisión alta (0,66), con valores casi iguales en train y validación. No sobreajusta: se queda corta. Con solo un 11 % de compradores, prefiere decir "no" casi siempre y detecta pocos de los que sí contratan.
 
@@ -264,7 +277,8 @@ prediccion-deposito-banco/
 │   ├── 02_modelos_alvaro.ipynb
 │   ├── 03_modelos_iker.ipynb
 │   ├── 04_modelos_akira.ipynb
-│   └── 05_shap.ipynb             SHAP del modelo elegido (validación)
+│   ├── 05_shap.ipynb             SHAP del modelo elegido (validación)
+│   └── 06_modelo_extra_naive_bayes.ipynb   modelo no visto en clase
 ├── src/
 │   ├── utils.py             funciones del proyecto (pipeline, métricas, MLflow)
 │   ├── entrenar_modelo.py   entrena y guarda el modelo elegido
