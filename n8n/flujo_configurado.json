@@ -1,0 +1,694 @@
+{
+  "name": "Reto1 · Decisión de llamada (depósito a plazo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deposito-decision",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "26e190f2-10be-42f2-b08c-422604996044",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        80,
+        400
+      ],
+      "webhookId": "5b0e7c3a-2d4f-4a61-9a0e-reto1deposito"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "fecha",
+              "value": "={{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "cliente_id",
+              "value": "={{ $json.body.cliente_id ?? 'sin_id' }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "p",
+              "value": "={{ (typeof $json.body.p === 'number' && $json.body.p >= 0 && $json.body.p <= 1) ? $json.body.p : null }}",
+              "type": "number"
+            },
+            {
+              "id": "f3b",
+              "name": "p_texto",
+              "value": "={{ (typeof $json.body.p === 'number' && $json.body.p >= 0 && $json.body.p <= 1) ? ($json.body.p * 100).toFixed(1) + ' %' : 'sin p (no válida)' }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "decision",
+              "value": "={{ (typeof $json.body.p === 'number' && $json.body.p >= 0 && $json.body.p <= 1) ? ($json.body.decision ?? '').toString().toUpperCase() : 'REVISION_MANUAL' }}",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "regla",
+              "value": "={{ $json.body.regla ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f5b",
+              "name": "nombre_regla",
+              "value": "={{ $json.body.nombre_regla ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f6",
+              "name": "motivo",
+              "value": "={{ $json.body.motivo ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f7",
+              "name": "prioridad",
+              "value": "={{ Number($json.body.prioridad ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "f8",
+              "name": "email_cliente",
+              "value": "={{ $json.body.email_cliente ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "307008e1-e264-408d-aa01-aba409099d39",
+      "name": "Normalizar datos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "LLAMAR_AHORA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "LLAMAR_AHORA"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "LLAMAR_ESTA_SEMANA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "LLAMAR_ESTA_SEMANA"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "c3",
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "ENVIAR_EMAIL",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ENVIAR_EMAIL"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "c4",
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "NO_LLAMAR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NO_LLAMAR"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "c5",
+                    "leftValue": "={{ $json.decision }}",
+                    "rightValue": "REVISION_MANUAL",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REVISION_MANUAL"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "74796704-757a-414a-9c14-0e6d2d7204dd",
+      "name": "Según la decisión",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        528,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "morcilloserna2005@gmail.com",
+          "mode": "list",
+          "cachedResultName": "morcilloserna2005@gmail.com"
+        },
+        "start": "={{ $now.plus({ hours: 1 }).toISO() }}",
+        "end": "={{ $now.plus({ hours: 1, minutes: 15 }).toISO() }}",
+        "additionalFields": {
+          "description": "=Decisión: {{ $json.decision }}\nRegla: {{ $json.regla }} · {{ $json.nombre_regla }} (prioridad {{ $json.prioridad }})\nPor qué: {{ $json.motivo }}\nProbabilidad de contratar: {{ $json.p_texto }}\nGenerado por el sistema de predicción el {{ $json.fecha }}",
+          "summary": "=📞 Llamar YA · cliente {{ $json.cliente_id }} (p = {{ $json.p_texto }})"
+        }
+      },
+      "id": "1b7a396c-72c5-49c2-9e87-73fd3f6bcdf6",
+      "name": "Calendar: llamada en 1 h",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [
+        848,
+        112
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "L15dB9fVHKdlszdf",
+          "name": "Google Calendar account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9JJW1qK20byZr0zixWnIemLclwM889clzGC9NO4K9U",
+          "mode": "list",
+          "cachedResultName": "reto1_n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9JJW1qK20byZr0zixWnIemLclwM889clzGC9NO4K9U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "cola_llamadas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9JJW1qK20byZr0zixWnIemLclwM889clzGC9NO4K9U/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha": "={{ $json.fecha }}",
+            "cliente_id": "={{ $json.cliente_id }}",
+            "p": "={{ $json.p }}",
+            "p_texto": "={{ $json.p_texto }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cliente_id",
+              "displayName": "cliente_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "p",
+              "displayName": "p",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "p_texto",
+              "displayName": "p_texto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9dd9eefb-f0fa-4b7d-9857-588efda07be5",
+      "name": "Sheets: cola de la semana",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        848,
+        272
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JYW7ujI4xySWXGTC",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email_cliente || 'morcilloserna2005@gmail.com' }}",
+        "subject": "Tu dinero puede rendir más: depósito a plazo",
+        "emailType": "text",
+        "message": "=Hola,\n\nTe escribimos porque creemos que nuestro depósito a plazo puede interesarte: rentabilidad garantizada y sin comisiones.\n\nSi quieres más información, responde a este correo y un gestor te llamará cuando te venga bien.\n\nUn saludo,\nEquipo comercial\n\n(Ref. cliente {{ $json.cliente_id }} · regla {{ $json.regla }})",
+        "options": {}
+      },
+      "id": "9d9dfbc6-e1da-4a31-a5f8-e50e82fa9c1b",
+      "name": "Gmail: correo al cliente",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        848,
+        432
+      ],
+      "webhookId": "a61ad233-c88e-44d2-9cf5-128d4dd60feb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aOdcjdFGdFMSqQKc",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9JJW1qK20byZr0zixWnIemLclwM889clzGC9NO4K9U",
+          "mode": "list",
+          "cachedResultName": "reto1_n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9JJW1qK20byZr0zixWnIemLclwM889clzGC9NO4K9U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 384419477,
+          "mode": "list",
+          "cachedResultName": "no_llamar",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9JJW1qK20byZr0zixWnIemLclwM889clzGC9NO4K9U/edit#gid=384419477"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "decision": "={{ $json.decision }}",
+            "regla": "={{ $json.regla }}",
+            "nombre_regla": "={{ $json.nombre_regla }}",
+            "motivo": "={{ $json.motivo }}",
+            "prioridad": "={{ $json.prioridad }}",
+            "email_cliente": "={{ $json.email_cliente }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "decision",
+              "displayName": "decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "regla",
+              "displayName": "regla",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre_regla",
+              "displayName": "nombre_regla",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prioridad",
+              "displayName": "prioridad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email_cliente",
+              "displayName": "email_cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b46c9a56-acc6-4df4-b5e0-f89532ef5b5e",
+      "name": "Sheets: lista no llamar",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        848,
+        592
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JYW7ujI4xySWXGTC",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "morcilloserna2005@gmail.com",
+        "subject": "=⚠️ Revisión manual · cliente {{ $json.cliente_id }} · {{ $json.regla || 'p no válida' }}",
+        "emailType": "text",
+        "message": "=El sistema NO ha tomado una decisión automática para este cliente (regla de seguridad).\n\nCliente: {{ $json.cliente_id }}\nProbabilidad p: {{ $json.p_texto }}\nRegla: {{ $json.regla }} · {{ $json.nombre_regla }}\nPor qué: {{ $json.motivo || 'n8n ha recibido una p no válida y ha forzado la revisión manual.' }}\nFecha: {{ $json.fecha }}\n\nRevisa el caso y decide a mano si se le llama.",
+        "options": {}
+      },
+      "id": "9cb32bf7-997a-4d6c-b25d-900b944f7fe6",
+      "name": "Gmail: aviso al supervisor",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        848,
+        752
+      ],
+      "webhookId": "7e8ba302-5de4-4a7d-be37-e75a82be0394",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aOdcjdFGdFMSqQKc",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, cliente_id: $('Normalizar datos').item.json.cliente_id, decision: $('Normalizar datos').item.json.decision, regla: $('Normalizar datos').item.json.regla, nombre_regla: $('Normalizar datos').item.json.nombre_regla, accion: ({ LLAMAR_AHORA: 'Llamada agendada en Google Calendar dentro de 1 hora', LLAMAR_ESTA_SEMANA: 'Cliente añadido a la cola de llamadas de la semana (Google Sheets)', ENVIAR_EMAIL: 'Correo informativo enviado al cliente (Gmail)', NO_LLAMAR: 'Cliente añadido a la lista de no llamar (Google Sheets)', REVISION_MANUAL: 'Aviso enviado al supervisor para revisión manual (Gmail)' })[$('Normalizar datos').item.json.decision] } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c00bac71-f322-4d6d-8fff-039866cbe69f",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1168,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: 'Decisión no reconocida: \"' + $json.decision + '\"', decisiones_validas: ['LLAMAR_AHORA', 'LLAMAR_ESTA_SEMANA', 'ENVIAR_EMAIL', 'NO_LLAMAR', 'REVISION_MANUAL'] } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "2484a7aa-d75f-49bf-8603-8d905294da40",
+      "name": "Responder error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        848,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Reto 1 · De la predicción a la acción\nStreamlit → modelo (p) → `src/reglas.py` (decisión) → **este webhook** → acción\n\n| Decisión | Reglas | Acción |\n|---|---|---|\n| LLAMAR_AHORA | R4, R5 | Evento en Google Calendar dentro de 1 h |\n| LLAMAR_ESTA_SEMANA | R6, R7 | Fila en Sheets `cola_llamadas` |\n| ENVIAR_EMAIL | R8 | Correo al cliente (Gmail) |\n| NO_LLAMAR | R3, R9 | Fila en Sheets `no_llamar` |\n| REVISION_MANUAL | R1, R2 | Correo al supervisor (seguridad) |\n| otra | — | Respuesta 400 |\n\nDoble seguridad: si p no es válida, n8n fuerza REVISION_MANUAL.",
+        "height": 360,
+        "width": 520
+      },
+      "id": "9f4bceed-6dd6-40a9-bcb0-d3276a3510d1",
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalizar datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar datos": {
+      "main": [
+        [
+          {
+            "node": "Según la decisión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Según la decisión": {
+      "main": [
+        [
+          {
+            "node": "Calendar: llamada en 1 h",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets: cola de la semana",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail: correo al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets: lista no llamar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail: aviso al supervisor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar: llamada en 1 h": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: cola de la semana": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: correo al cliente": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets: lista no llamar": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: aviso al supervisor": {
+      "main": [
+        [
+          {
+            "node": "Responder OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7316db32-eb01-4744-87a2-c056030c7182",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "997b3431691ecac7366a3df7b8d7fd7fb4f79a6eb07ecb918ab9b07eb3f23126"
+  },
+  "nodeGroups": [],
+  "id": "tw72zDz9q08RaZsk",
+  "tags": []
+}
