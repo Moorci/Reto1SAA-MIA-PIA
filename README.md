@@ -4,7 +4,6 @@ Sistema que indica al equipo de telemarketing de un banco **a qué clientes llam
 
 ![Aplicación en Streamlit](resultados/app_streamlit.png)
 
-> **PENDIENTE:** captura de la app de Streamlit (`resultados/app_streamlit.png`). Debe ir arriba del todo.
 
 **Herramientas:** Python · pandas · matplotlib · scikit-learn · imbalanced-learn · XGBoost · SHAP · MLflow · Streamlit · n8n
 
@@ -26,14 +25,15 @@ Un banco portugués hizo entre 2008 y 2010 una campaña de marketing telefónico
 
 **Qué mejora supone para la empresa**
 
-> **PENDIENTE:** completar con las métricas del modelo elegido. Estructura a seguir:
->
-> | | |
-> |---|---|
-> | Dato de partida | 41.188 llamadas, 4.640 contrataciones (11,3 %) |
-> | Suposición | Coste de una llamada y beneficio de un depósito contratado (**a decidir entre los tres**) |
-> | Cálculo | Si llamamos solo al X % de clientes con más probabilidad, conseguimos Y % de las contrataciones con Z llamadas menos |
-> | Mejora | Llamadas ahorradas × coste por llamada, o contrataciones extra × beneficio |
+La estimación siguiente usa el conjunto de test (8.236 clientes) y el umbral 0,5. Es una simulación sobre datos históricos, no una prueba causal: no demuestra qué habría ocurrido si la campaña hubiera llamado a otros clientes.
+
+| | |
+|---|---|
+| Dato de partida | En test, 928 de 8.236 clientes contrataron (11,3 %). |
+| Resultado del modelo | Recomienda llamar a 1.420 clientes (17,2 % del conjunto) y detecta 595 de las 928 contrataciones (64,1 %). |
+| Eficiencia de llamadas | La precisión es 41,9 %: por cada 100 llamadas recomendadas, unas 42 terminan en contratación, frente a 11,3 de cada 100 sin priorización (aproximadamente 3,7 veces más). |
+| Llamadas evitadas | Frente a llamar a todo el conjunto, se priorizan 6.816 llamadas menos (82,8 %); en esta simulación, 333 contrataciones quedarían sin detectar. |
+| Impacto económico | No se expresa en euros porque el proyecto no proporciona el coste de una llamada ni el margen neto de un depósito. Sin esos datos no se puede calcular un ahorro o beneficio monetario fiable. |
 
 ## Qué hemos construido
 
@@ -45,7 +45,7 @@ graph LR
     D --> E[Acción]
 ```
 
-Construimos un sistema que recibe los datos de un cliente (por ejemplo, su trabajo, su edad, cómo se le contactó y el contexto económico), calcula con un modelo de aprendizaje automático la probabilidad `p` de que contrate el depósito, aplica unas reglas de negocio que convierten esa probabilidad en una decisión (llamar ahora, dejarlo para más tarde, no llamar...) y envía esa decisión por webhook a un flujo de n8n que ejecuta la acción. **[PENDIENTE: concretar la acción de n8n cuando esté decidida: Google Sheets, correo, Google Calendar...]**
+Construimos un sistema que recibe los datos de un cliente (por ejemplo, su trabajo, su edad, cómo se le contactó y el contexto económico), calcula con un modelo de aprendizaje automático la probabilidad `p` de que contrate el depósito, aplica unas reglas de negocio que convierten esa probabilidad en una decisión (llamar ahora, dejarlo para más tarde, no llamar...) y envía esa decisión por webhook al flujo de n8n. Según la decisión, el flujo agenda una llamada en Google Calendar, registra una tarea en Google Sheets, envía un correo con Gmail o deriva el caso al supervisor.
 
 Cada herramienta cumple una función:
 
@@ -223,6 +223,18 @@ Qué significa para el banco:
 
 **Experimentos en MLflow.** El experimento común `reto1-deposito-banco` reúne 41 ejecuciones: 3 de regresión logística/KNN/SVM, 16 de Random Forest y XGBoost, 8 de MLP, 12 de Naive Bayes, 1 de SHAP y 1 del modelo final entrenado. Cada run guarda sus parámetros y métricas; las ejecuciones principales permiten comparar las configuraciones ganadoras.
 
+Estas capturas muestran los registros y las vistas de comparación del experimento:
+
+![Ejecuciones y nombres de los modelos en MLflow](<resultados/detalles y parámetros de comparar modelos_1.png>)
+
+![Métricas registradas para las ejecuciones en MLflow](<resultados/detalles y parámetros de comparar modelos_2.png>)
+
+![Comparación de F1 de validación mediante scatter plot](<resultados/comparar modelos Scatter Plot.png>)
+
+![Comparación de configuraciones mediante coordenadas paralelas](<resultados/comparar modelos Parallel Coordinates Plot.png>)
+
+![Métricas del run del modelo Random Forest elegido](<resultados/detalles de modelo elegido.png>)
+
 La base `mlflow.db` es local y no se incluye en Git. Para reconstruirla en otro equipo hay que ejecutar los notebooks (no basta con abrir sus resultados guardados) y entrenar el modelo final antes de iniciar la interfaz. Comprueba también que el selector de experimento de MLflow muestra `reto1-deposito-banco` y que no hay filtros activos en Runs.
 
 ## Reglas de negocio y acción
@@ -241,7 +253,7 @@ Las reglas están en `src/reglas.py`. Se revisan en orden de prioridad y **la pr
 | 8 | `p` ≥ 0,113 | `ENVIAR_EMAIL` | Mejor que llamar al azar, pero no compensa una llamada; el correo es casi gratis |
 | 9 | Resto (`p` < 0,113) | `NO_LLAMAR` | Peor que llamar sin criterio: ese tiempo va a clientes con más opciones |
 
-**Acción en n8n** (`n8n/flujo.json`): el webhook recibe la decisión y hace una acción distinta en cada rama.
+**Acción en n8n** (`n8n/flujo_configurado.json`): el webhook recibe la decisión y hace una acción distinta en cada rama. Para ejecutarlo hacen falta credenciales válidas de Google Calendar, Google Sheets y Gmail, además de configurar el webhook; los pasos están en [`n8n/README.md`](./n8n/README.md).
 
 | Decisión | Acción |
 |---|---|
@@ -251,7 +263,7 @@ Las reglas están en `src/reglas.py`. Se revisan en orden de prioridad y **la pr
 | `NO_LLAMAR` | Fila en la hoja `no_llamar` de Google Sheets |
 | `REVISION_MANUAL` | Correo al supervisor con Gmail |
 
-> Los umbrales (0,50 / 0,25 / 0,113) hay que revisarlos con las probabilidades del modelo elegido en validación.
+Los umbrales (0,50 / 0,25 / 0,113) son reglas operativas fijadas a partir de la tasa base y los patrones observados en el EDA; no se optimizaron mediante una búsqueda de costes ni una prueba A/B. La pestaña de evaluación de Streamlit muestra cómo se distribuyen los clientes de test entre las decisiones. Antes de usar el sistema en una campaña real, conviene revisar los umbrales con datos recientes, una validación temporal y los costes y márgenes reales del banco.
 
 ## Limitaciones y próximos pasos
 
@@ -285,7 +297,7 @@ prediccion-deposito-banco/
 ├── app/
 │   └── streamlit_app.py     aplicación
 ├── models/                  mejor_modelo.joblib
-├── n8n/                     flujo.json
+├── n8n/                     flujo_configurado.json y documentación
 └── resultados/              gráficos y capturas de MLflow y de la app
 ```
 

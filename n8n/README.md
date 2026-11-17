@@ -1,6 +1,6 @@
 # Flujo de n8n
 
-`flujo.json`: **Webhook → Normalizar datos → Switch (una rama por decisión) → acción → respuesta a Streamlit**.
+`flujo_configurado.json`: **Webhook → Normalizar datos → Switch (una rama por decisión) → acción → respuesta a Streamlit**.
 
 | Decisión (`src/reglas.py`) | Reglas | Acción en n8n |
 |---|---|---|
@@ -15,7 +15,7 @@
 
 ## Puesta en marcha
 
-1. En n8n: *Workflows → Import from file* → `n8n/flujo.json`.
+1. En n8n: *Workflows → Import from file* → `n8n/flujo_configurado.json`.
 2. Crea las credenciales de Google (Calendar, Sheets y Gmail) y asígnalas a cada nodo.
 3. Crea una Google Sheet con dos pestañas, `cola_llamadas` y `no_llamar`, con estas cabeceras en la fila 1:
    `fecha | cliente_id | p | p_texto | decision | regla | nombre_regla | motivo | prioridad | email_cliente`.
